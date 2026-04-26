@@ -46,7 +46,7 @@ catalogs:
       specifier: ^10.2.1
       version: 10.2.1
     get-tsconfig:
-      specifier: ^5.0.0-beta.4
+      specifier: 5.0.0-beta.4
       version: 5.0.0-beta.4
     mlly:
       specifier: ^1.8.2
