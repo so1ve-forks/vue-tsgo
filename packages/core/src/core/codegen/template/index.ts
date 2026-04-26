@@ -109,7 +109,11 @@ function* generateSlots(
     options: TemplateCodegenOptions,
     ctx: TemplateCodegenContext,
 ): Generator<Code> {
-    if (options.hasDefineSlots || !ctx.slots.length && !ctx.dynamicSlots.length) {
+    if (options.hasDefineSlots) {
+        ctx.generatedTypes.add(names.Slots);
+        return;
+    }
+    if (!ctx.slots.length && !ctx.dynamicSlots.length) {
         return;
     }
     ctx.generatedTypes.add(names.Slots);
