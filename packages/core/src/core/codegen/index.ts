@@ -6,6 +6,7 @@ import { basename, extname } from "pathe";
 import type { Position } from "vscode-languageserver-protocol";
 import { createCompilerOptionsBuilder, parseLocalCompilerOptions } from "../compilerOptions";
 import { createIR, type IRBlock } from "../parse/ir";
+import { toMappings } from "../shared";
 import { collectScriptRanges } from "./ranges/script";
 import { collectScriptSetupRanges } from "./ranges/scriptSetup";
 import { generateScript } from "./script";
@@ -42,7 +43,11 @@ export function createSourceFile(
     sourceText: string,
     vueCompilerOptions: VueCompilerOptions,
 ) {
-    const sourceFile = vueCompilerOptions.extensions.some((ext) => sourcePath.endsWith(ext))
+    const sourceLang = extname(sourcePath);
+    const sourceFile = (
+        vueCompilerOptions.extensions.includes(sourceLang) ||
+        vueCompilerOptions.vitePressExtensions.includes(sourceLang)
+    )
         ? createVirtualFile(sourcePath, sourceText, vueCompilerOptions)
         : createNativeFile(sourcePath, sourceText);
 
@@ -69,7 +74,7 @@ function createVirtualFile(
     sourceText: string,
     vueCompilerOptions: VueCompilerOptions,
 ): SourceFile {
-    const ir = createIR(sourceText);
+    const ir = createIR(sourcePath, sourceText, vueCompilerOptions);
     const virtualLang = ir.scriptSetup?.lang ?? ir.script?.lang ?? "ts";
 
     // #region vueCompilerOptions
@@ -284,24 +289,7 @@ function createNativeFile(sourcePath: string, sourceText: string): SourceFile {
 }
 
 function createMappings(codes: Code[]) {
-    const originalMappings: Mapping<CodeInformation>[] = [];
-
-    let length = 0;
-    for (const code of codes) {
-        if (typeof code === "string") {
-            length += code.length;
-            continue;
-        }
-        else {
-            originalMappings.push({
-                sourceOffsets: [code[2]],
-                generatedOffsets: [length],
-                lengths: [code[0].length],
-                data: code[3],
-            });
-            length += code[0].length;
-        }
-    }
+    const originalMappings = toMappings(codes);
 
     const mappings: typeof originalMappings = [];
     const tokens: Record<symbol, Mapping> = {};

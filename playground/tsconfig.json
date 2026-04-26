@@ -1,7 +1,13 @@
 {
   "extends": "@zinkawaii/tsconfig",
+  "vueCompilerOptions": {
+    "vitePressExtensions": [
+      ".md"
+    ]
+  },
   "include": [
     "src/**/*.ts",
-    "src/**/*.vue"
+    "src/**/*.vue",
+    "src/**/*.md"
   ]
 }

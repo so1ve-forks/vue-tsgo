@@ -1,6 +1,8 @@
 import CompilerDOM from "@vue/compiler-dom";
 import { type Comment, type OxcError, parseSync, type Program } from "oxc-parser";
+import type { VueCompilerOptions } from "@vue/language-core";
 import { getAttributeValueOffset } from "../shared";
+import { createSFC } from "./sfc";
 import { parseStyleBindings, parseStyleClassNames } from "./style/parse";
 import { parseTemplate } from "./template/parse";
 
@@ -63,18 +65,8 @@ export interface IRCustomBlock extends IRBlock {
     type: string;
 }
 
-export function createIR(sourceText: string) {
-    const errors: CompilerDOM.CompilerError[] = [];
-    const warnings: CompilerDOM.CompilerError[] = [];
-
-    const sfc = CompilerDOM.parse(sourceText, {
-        comments: true,
-        parseMode: "sfc",
-        isNativeTag: () => true,
-        isPreTag: () => true,
-        onError: (err) => errors.push(err),
-        onWarn: (warn) => warnings.push(warn),
-    });
+export function createIR(sourcePath: string, sourceText: string, vueCompilerOptions: VueCompilerOptions) {
+    const sfc = createSFC(sourcePath, sourceText, vueCompilerOptions);
 
     const ir: IR = {
         styles: [],
@@ -93,7 +85,7 @@ export function createIR(sourceText: string) {
 
         switch (node.tag) {
             case "template": {
-                const block = createIRBlock(sfc, node, "html");
+                const block = createIRBlock(node, "html");
                 const errors: CompilerDOM.CompilerError[] = [];
                 const warnings: CompilerDOM.CompilerError[] = [];
                 const options: CompilerDOM.CompilerOptions = {
@@ -112,7 +104,7 @@ export function createIR(sourceText: string) {
                 break;
             }
             case "script": {
-                const block = createIRBlock(sfc, node, "js");
+                const block = createIRBlock(node, "js");
                 const result = parseSync(`dummy.${block.lang}`, block.content);
 
                 if (block.attrs.setup || block.attrs.vapor) {
@@ -136,7 +128,7 @@ export function createIR(sourceText: string) {
                 break;
             }
             case "style": {
-                const block = createIRBlock(sfc, node, "css");
+                const block = createIRBlock(node, "css");
                 const bindings = [...parseStyleBindings(block.content)];
                 const classNames = [...parseStyleClassNames(block.content)];
 
@@ -149,7 +141,7 @@ export function createIR(sourceText: string) {
                 break;
             }
             default: {
-                const block = createIRBlock(sfc, node, "txt");
+                const block = createIRBlock(node, "txt");
 
                 ir.customBlocks.push({
                     ...block,
@@ -187,31 +179,7 @@ export function createIR(sourceText: string) {
     return ir;
 }
 
-function createIRBlock(
-    sfc: CompilerDOM.RootNode,
-    node: CompilerDOM.ElementNode,
-    defaultLang: string,
-): Omit<IRBlock, "name"> {
-    let { start, end } = node.loc;
-    let content = "";
-
-    if (node.children.length) {
-        start = node.children[0].loc.start;
-        end = node.children.at(-1)!.loc.end;
-        content = sfc.source.slice(start.offset, end.offset);
-    }
-    else {
-        const offset = node.loc.source.indexOf("</");
-        if (offset !== -1) {
-            start = {
-                line: start.line,
-                column: start.column + offset,
-                offset: start.offset + offset,
-            };
-        }
-        end = { ...start };
-    }
-
+function createIRBlock(node: CompilerDOM.ElementNode, defaultLang: string): Omit<IRBlock, "name"> {
     const attrs: Record<string, IRBlockAttr> = {};
     for (const prop of node.props) {
         if (prop.type !== CompilerDOM.NodeTypes.ATTRIBUTE) {
@@ -232,11 +200,11 @@ function createIRBlock(
 
     return {
         lang: typeof attrs.lang === "object" ? attrs.lang.text : defaultLang,
-        start: sfc.source.lastIndexOf(`<${node.tag}`, start.offset),
-        end: sfc.source.indexOf(`>`) + 1,
-        innerStart: start.offset,
-        innerEnd: end.offset,
+        start: node.loc.start.offset,
+        end: node.loc.end.offset,
+        innerStart: node.innerLoc!.start.offset,
+        innerEnd: node.innerLoc!.end.offset,
         attrs,
-        content,
+        content: node.innerLoc!.source,
     };
 }

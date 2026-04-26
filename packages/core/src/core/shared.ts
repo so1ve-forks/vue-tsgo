@@ -3,6 +3,8 @@ import { ResolverFactory } from "oxc-resolver";
 import { join } from "pathe";
 import { exec, type Options } from "tinyexec";
 import type CompilerDOM from "@vue/compiler-dom";
+import type { Mapping } from "@vue/language-core";
+import type { Segment } from "muggle-string";
 import type { IRTemplate } from "./parse/ir";
 import type { CodeInformation } from "./types";
 
@@ -48,6 +50,29 @@ export function getElementTagOffsets(node: CompilerDOM.ElementNode, template: IR
         }
     }
     return offsets as [number] | [number, number];
+}
+
+export function toMappings<T>(codes: Segment<T>[]) {
+    const mappings: Mapping<T>[] = [];
+
+    let length = 0;
+    for (const code of codes) {
+        if (typeof code === "string") {
+            length += code.length;
+            continue;
+        }
+        else {
+            mappings.push({
+                sourceOffsets: [code[2]],
+                generatedOffsets: [length],
+                lengths: [code[0].length],
+                data: code[3]!,
+            });
+            length += code[0].length;
+        }
+    }
+
+    return mappings;
 }
 
 export function isVerificationEnabled(data: CodeInformation, code: number) {

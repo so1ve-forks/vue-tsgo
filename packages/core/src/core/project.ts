@@ -78,13 +78,6 @@ export class Project {
         );
 
         const builder = createCompilerOptionsBuilder();
-        this.resolver = new ResolverFactory({
-            tsconfig: {
-                configFile: this.configPath,
-            },
-            extensions: [".js", ".jsx", ".ts", ".tsx", ".d.ts", ".json", ".vue"],
-        });
-
         for (const { path, config } of this.extends.toReversed()) {
             if ("vueCompilerOptions" in config) {
                 builder.add(config.vueCompilerOptions as any, dirname(path));
@@ -95,7 +88,15 @@ export class Project {
         const extensions = new Set([
             ...[".ts", ".tsx", ".js", ".jsx", ".json", ".mjs", ".mts", ".cjs", ".cts"],
             ...this.vueCompilerOptions.extensions,
+            ...this.vueCompilerOptions.vitePressExtensions,
         ]);
+
+        this.resolver = new ResolverFactory({
+            tsconfig: {
+                configFile: this.configPath,
+            },
+            extensions: Array.from(extensions),
+        });
         this.includes = await resolveFiles(this.parsed, this.configPath, extensions);
 
         // process files in parallel waves:
