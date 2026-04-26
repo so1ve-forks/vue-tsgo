@@ -254,7 +254,7 @@ export class Project {
         }
 
         // write all directories first
-        await Promise.all([...dirs].map((dir) => mkdir(dir, { recursive: true })));
+        await Promise.all(Array.from(dirs, (dir) => mkdir(dir, { recursive: true })));
 
         // write all files in parallel
         await Promise.all(tasks.map((task) => task()));

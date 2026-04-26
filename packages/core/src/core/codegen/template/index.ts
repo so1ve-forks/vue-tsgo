@@ -148,7 +148,7 @@ function* generateInheritedAttrs(ctx: TemplateCodegenContext) {
     ctx.generatedTypes.add(names.InheritedAttrs);
 
     yield `type ${names.InheritedAttrs} = Partial<${
-        [...ctx.inheritedAttrVars].map((name) => `typeof ${name}`).join(` & `)
+        Array.from(ctx.inheritedAttrVars, (name) => `typeof ${name}`).join(` & `)
     }>`;
     yield endOfLine;
 }
